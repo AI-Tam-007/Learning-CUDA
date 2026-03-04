@@ -28,4 +28,5 @@ int main()
     cudaDeviceSynchronize();  // 显示同步操作，CPU等待GPU执行完毕
 
     return 0;
+
 }
