@@ -1,9 +1,12 @@
 /*
 ====== 打印Hello CUDA ====== 
 总结：
-1. 核函数：__global__ void kernel_name(){}
+1. 核函数：__global__ void kernel_name()
+          {
+               xxxxx;
+          }
 2. 线程索引(一维)：idx = blockDim.x * blockIdx.x + threadIdx.x;
-3. blockDim.x：指代一个block中总共有n个线程；  blockIdx.x：指代第n个block；  threadIdx.x：指代第n个block中的第n个线程；
+3. blockDim.x:指代一个block中总共有n个线程;        blockIdx.x:指代第n个block;       threadIdx.x:指代第n个block中的第n个线程;
    例如：||||||  ||||||  ||||， 即：blockDim.x = 6； blockIdx.x = 2； threadIdx.x = 4；  故idx = 6 * 2 + 4 = 16；
            0       1      2
 4. 启动核函数：kernel_name<<<grid_dim, block_dim>>(args);
