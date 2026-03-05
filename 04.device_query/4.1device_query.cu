@@ -1,6 +1,5 @@
 /*
 总结：
-
 1.决定block大小看：
                     maxThreadsPerBlock
                     warpSize
@@ -26,6 +25,22 @@
                      计算慢	               算力瓶颈
                    occupancy低	           资源瓶颈
 
+
+输出示例：
+Detected 1 CUDA Capable device(s)
+
+Device 0: "NVIDIA GeForce GTX 1060"
+  Total amount of global memory:                 6144 MBytes (6442319872 bytes)  
+  GPU Max Clock rate:                            1733 MHz (1.73 GHz)   
+  L2 Cache Size:                                 1572864 bytes     
+  Total amount of shared memory per block:       49152 bytes       
+  Total shared memory per multiprocessor:        98304 bytes      
+  Total number of registers available per block: 65536           
+  Warp size:                                     32                
+  Maximum number of threads per multiprocessor:  2048              
+  Maximum number of threads per block:           1024             
+  Max dimension size of a block size (x,y,z): (1024, 1024, 64)    
+  Max dimension size of a grid size    (x,y,z): (2147483647, 65535, 65535) 
 */
 
 
@@ -107,3 +122,9 @@ int main()
 
     return 0;
 }
+
+
+
+
+
+
