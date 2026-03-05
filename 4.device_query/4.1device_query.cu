@@ -1,5 +1,5 @@
 /*
-
+=======设备查询(获取GPU详细参数)=======
 Detected 1 CUDA Capable device(s)
 
 Device 0: "NVIDIA GeForce GTX 1060"
