@@ -1,4 +1,7 @@
-// 相较baseline_reduce_sum而言，v1版本引入了shared memory。注意：并不是说引入了shared memory后就一定能得到性能提升。
+// 相较baseline_reduce_sum而言，v1版本引入了shared memory。
+// 注意：并不是说引入了shared memory后就一定能得到性能提升。
+
+
 
 /*
 总结：
@@ -31,7 +34,7 @@ using namespace std;
 */
 
 
-template<int blockSize>    // // 可用template<int blockSize>和#define  blockSize 256，但template<int blockSize>是最优选择
+template<int blockSize>    // 可用template<int blockSize>和#define  blockSize 256，但template<int blockSize>是最优选择
 __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
 {
     // 每个block内部都有自己的share memory，share memory延迟更低，带宽更高，因此在share memory中实现速度要快些。
