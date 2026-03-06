@@ -14,7 +14,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 using namespace std;
-#define  BlockNum 256   // 最好用模板：template<int blockSize>
+
 
 /*
  （个人理解：）
@@ -31,47 +31,51 @@ using namespace std;
 */
 
 
-
+template<int blockSize>    // // 可用template<int blockSize>和#define  blockSize 256，但template<int blockSize>是最优选择
 __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
 {
-    __shared__ int share_memory[BlockNum];
+    // 每个block内部都有自己的share memory，share memory延迟更低，带宽更高，因此在share memory中实现速度要快些。
+    __shared__ int share_memory[blockSize];
     int local_block_threadidx = threadIdx.x;   // 在某一个block中的thread的id
     int global_block_threadidx = blockDim.x * blockIdx.x + threadIdx.x;  // 在全局block中的thread的id
 
-    // 每个block有自己的share memory，因此在share memory中实现速度要快些。
-    // 将每个线程对应的数据加载到share memory中
-    // 为什么这样写，因为不同的block中的thread的索引都是从0开始，正好对应着local_block_threadidx。
-    // 所以，当share memory改变后，应该和local_block_threadidx一样继续从0开始。
-    // 但是gpu_arr的数据可不一样，不同的block是接在一起的，用全局线程索引就能将所有数据都串在一起，
-    if (global_block_threadidx < N)  // 如果没有这句话，当线程数大于数据数量时，数据数量会越界。(线程数等于数据量则一个线程干一份活，当线程数小于数据量则一部分线程多干两份活)
+    
+    // 将每个线程对应的数据加载到share memory中，如果N/block不为整数，则此处最后一个block存在warp divergence，但是影响不大，相对整个N很小
+    if (global_block_threadidx < N)  // 如果没有这句话，当线程数大于数据数量时，数组可能会越界。
     {
+
+        // 为什么这样写，因为不同的block中的thread的索引都是从0开始，正好对应着local_block_threadidx。
+        // 所以，当share memory改变后，应该和local_block_threadidx一样继续从0开始。
+        // 但是gpu_arr的数据可不一样，不同的block是接在一起的，用全局线程索引就能将所有数据都串在一起，
         share_memory[local_block_threadidx] = gpu_arr[global_block_threadidx];
     }
-    __syncthreads();
+    else
+    {
+        share_memory[local_block_threadidx] = 0;   // 这里为什么要填0，避免后续计算将“垃圾值”加载到数据中了。
+    }
+    __syncthreads();   // 保证别的线程读之前都写完，先确保写完再去读取，这样避免读取到旧值，错值。
 
 
     
-    // 这里为什么是blockDim.x，因为local_block_threadidx是某一个线程的id，而blockDim.x就是某一个线程块的大小，不一定就是定值256。
+    // 这里为什么是blockDim.x，因为local_block_threadidx是某block中的一个thread的id，而blockDim.x就是某一个block的大小，但不一定就是定值256。
     for(int index = 1; index < blockDim.x; index *= 2)
     {
-        if(local_block_threadidx % (2 * index) == 0) // 这里为什么要×2，因为index=1时，即指所有线程一一对应所有数。当index=2时，即指偶数位，因此奇数位被忽略，这个时候才应该执行求和。
+        // 个人认为此处并未出现warp divergence，else为空，影响可忽略不计，实测后的效率也并没有什么影响。
+        if(local_block_threadidx % (2 * index) == 0) // 这里为什么要×2，因为index=1时，即指所有线程一一对应所有数。当index=2时，即指偶数位，因此奇数位被忽略，这个时候[0] = [0] + [1]…………即可执行求和。
         {
             share_memory[local_block_threadidx] += share_memory[local_block_threadidx + index];
         }
-        //Line 46-49其实并未出现warp divergence(线程束分化) 
         __syncthreads();
     }
 
-    // 
     
 
     // 这里为什么要有这个判断语句？因为如果没有这个判断语句，100000个block中每一个线程都会并行执行这个语句，导致产生竟态条件。
-    // 再加上每个block中最后求得的规约结果是保存在0号位，也就是由0号线程执行，故添上判断语句非常合理。
+    // 并且让local_block_threadidx == 0是约定俗成的，也可以不== 0，由于最终归约的结果是在[0]号位，最好是用0，方便易理解。
     if(local_block_threadidx == 0)
     {
         gpu_sum[blockIdx.x] = share_memory[0];
     }
-    // 后面不用添加__syncthreads();语句是因为结束嘞，如果后面还有需要使用共享内存或全局内存的其他操作就需要加
 
 }
 
@@ -96,10 +100,10 @@ int main()
 
     int N = 25600000;
     /*定义GPU的grid和block*/
-    int block_num = 256;   // 定义一个block大小，即blockDim.x大小，也就是1个block中thread的数量，最好设置为32的倍数并且是2的幂次，否则在核函数中容易发生越界的可能
-    int grid_num = (N + block_num - 1) / block_num;   // 定义一个grid大小，即gridDim.x，也就是block数量。如果是一维，即表示grid_num个block，如果是二维，即表示grid_num*grid_num个block
-    dim3 block(block_num);  // 一维，即一个block中包含block_num个线程
-    dim3 grid(grid_num);   // 一维，即一个grid中包含grid_num个block
+    int blockSize = 256;   // 定义一个block大小，即blockDim.x大小，也就是1个block中thread的数量，最好设置为32的倍数并且是2的幂次，否则在核函数中容易发生越界的可能
+    int gridSize = (N + blockSize - 1) / blockSize;   // 定义一个grid大小，即gridDim.x，也就是block数量。如果是一维，即表示gridSize个block，如果是二维，即表示gridSize*gridSize个block
+    dim3 block(blockSize);  // 一维，即一个block中包含blockSize个线程
+    dim3 grid(gridSize);   // 一维，即一个grid中包含gridSize个block
 
 
 
