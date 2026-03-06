@@ -11,7 +11,7 @@
             {
                 int index = 2 * i * threadIdx.x;
                 if (index < blockDim.x) {
-                    smem[index] += smem[index + i];
+                    shared_memory[index] += smem[index + i];
                 }
                 __syncthreads();
             }
@@ -36,7 +36,7 @@ using namespace std;
 template<int blockSize>    // 可用template<int blockSize>和#define  blockSize 256，但template<int blockSize>是最优选择
 __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
 {
-    // 每个block内部都有自己的share memory，share memory延迟更低，带宽更高，因此在share memory中实现速度要快些。
+    // 每个block内部都有自己的share memory，shared memory延迟更低，带宽更高，因此在share memory中实现速度要快些。
     __shared__ int share_memory[blockSize];
     int local_block_threadidx = threadIdx.x;   // 在某一个block中的thread的id
     int global_block_threadidx = blockDim.x * blockIdx.x + threadIdx.x;  // 在全局block中的thread的id
@@ -47,13 +47,13 @@ __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
     {
 
         // 为什么这样写，因为不同的block中的thread的索引都是从0开始，正好对应着local_block_threadidx。
-        // 所以，当share memory改变后，应该和local_block_threadidx一样继续从0开始。
+        // 所以，当shared memory改变后，应该和local_block_threadidx一样继续从0开始。
         // 但是gpu_arr的数据可不一样，不同的block是接在一起的，用全局线程索引就能将所有数据都串在一起，
-        share_memory[local_block_threadidx] = gpu_arr[global_block_threadidx];
+        shared_memory[local_block_threadidx] = gpu_arr[global_block_threadidx];
     }
     else
     {
-        share_memory[local_block_threadidx] = 0;   // 这里为什么要填0，避免后续计算将“垃圾值”加载到数据中了。
+        shared_memory[local_block_threadidx] = 0;   // 这里为什么要填0，避免后续计算将“垃圾值”加载到数据中了。
     }
     __syncthreads();   // 保证别的线程读之前都写完，先确保写完再去读取，这样避免读取到旧值，错值。
 
@@ -67,7 +67,7 @@ __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
         // ⚠v2相较v1优化此处，将'%'修改为'&'
         if((local_block_threadidx & (2 * index - 1)) == 0 && (2 * index) <= blockDim.x)  // 个人认为此处并未出现warp divergence，else为空，影响可忽略不计，实测后的效率也并没有什么影响。
         {
-            share_memory[local_block_threadidx] += share_memory[local_block_threadidx + index];
+            shared_memory[local_block_threadidx] += shared_memory[local_block_threadidx + index];
         }
         __syncthreads();
     }
@@ -78,7 +78,7 @@ __global__ void sum(int *gpu_arr, int *gpu_sum, int N)
     // 并且让local_block_threadidx == 0是约定俗成的，也可以不== 0，由于最终归约的结果是在[0]号位，最好是用0，方便易理解。
     if(local_block_threadidx == 0)
     {
-        gpu_sum[blockIdx.x] = share_memory[0];
+        gpu_sum[blockIdx.x] = shared_memory[0];
     }
 
 }
