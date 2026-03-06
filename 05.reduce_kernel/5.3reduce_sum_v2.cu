@@ -11,7 +11,7 @@
             {
                 int index = 2 * i * threadIdx.x;
                 if (index < blockDim.x) {
-                    shared_memory[index] += smem[index + i];
+                    shared_memory[index] += shared_memory[index + i];
                 }
                 __syncthreads();
             }
