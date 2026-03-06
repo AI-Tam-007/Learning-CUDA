@@ -30,7 +30,7 @@ __global__ void reduce_v3(float *gpu_arr, float *gpu_sum, int N)
   
     __shared__ float shared_memory[blockSize];   // 注意：kernel内部的blockSize并非外部的blockSize值，因为外部在启动kernel时用的是blockSize/2
     unsigned int local_block_threadidx = threadIdx.x;
-    unsigned int global_block_threadidx = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+    unsigned int global_block_threadidx = blockIdx.x * (blockDim.x * 2) + threadIdx.x; // 此处*2指仍要处理2*blockSize的数据，即256个，只是线程数减成128而已
 
     
     // 每个线程加载两个元素到shared mem对应位置（边界保护）
@@ -45,7 +45,8 @@ __global__ void reduce_v3(float *gpu_arr, float *gpu_sum, int N)
     
     
     // 开始对每个block进行归约求和
-    for (unsigned int index = blockDim.x / 2; index > 0; index >>= 1) {
+    for (unsigned int index = blockDim.x / 2; index > 0; index >>= 1) 
+    {
         if (local_block_threadidx < index) 
         {
             shared_memory[local_block_threadidx] += shared_memory[local_block_threadidx + index];
