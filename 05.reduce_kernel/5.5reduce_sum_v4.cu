@@ -150,7 +150,7 @@ int main()
 
 
     //  ==============热身===================
-    reduce_v3<blockSize / 2><<<grid,block>>>(gpu_arr, gpu_sum, N);  // 热身，为了计算更准确的时间
+    reduce_v4<blockSize / 2><<<grid,block>>>(gpu_arr, gpu_sum, N);  // 热身，为了计算更准确的时间
     cudaDeviceSynchronize();
     // =====================================
 
@@ -191,7 +191,7 @@ int main()
             cout << "res per block :" << cpu_sum[i] << endl;
         }
     }
-    cout << "reduce_v3 latency :" << milliseconds << endl;
+    cout << "reduce_v4 latency :" << milliseconds << endl;
 
     // 释放资源
     cudaFree(gpu_arr);
