@@ -110,7 +110,7 @@ int main()
 
 	// 热身调用，它的作用是为了后续测量纯计算性能，40M数据填满L2 Cache，间接性关闭L2 Cache(一般40M以内)，因为首次调用存在初始化的开销，如果不热身，则初始化开销的时间也会计算到性能中。
     vector_add_upgrade<<<grid_one, block_num >>>(gpu_x, gpu_y, gpu_z, N_OFFSET);   
-   
+   	// 当热身结束，后面的10轮迭代会一个接一个沾满L2 Cache，因此这就是为什么向量化的读写也可以测量显存带宽。
 
 
     float milliseconds = 0.0; // 它必须设定为float类型,因为后面的cudaEventElapsedTime算出的时间是毫秒级别。
