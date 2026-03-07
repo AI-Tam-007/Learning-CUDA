@@ -115,7 +115,15 @@ int main()
     // 将host端的cpu_arr数据转到device端的gpu_arr数据中
     cudaMemcpy(gpu_arr, cpu_arr, N * sizeof(float), cudaMemcpyHostToDevice);
 
-    
+
+
+    //  ==============热身===================
+    reduce_v3<blockSize / 2><<<grid,block>>>(gpu_arr, gpu_sum, N);  // 热身，为了计算更准确的时间
+    cudaDeviceSynchronize();
+    // =====================================
+
+
+
     // 记录核函数处理时间
     float milliseconds = 0;
 
