@@ -34,7 +34,7 @@ using namespace std;
 
 
 template<int blockSize>    // 可用template<int blockSize>和#define  blockSize 256，但template<int blockSize>是最优选择
-__global__ void sum(int *gpu_arr, int *gpu_sum, int N)
+__global__ void reduce_v2(int *gpu_arr, int *gpu_sum, int N)
 {
     // 每个block内部都有自己的share memory，shared memory延迟更低，带宽更高，因此在share memory中实现速度要快些。
     __shared__ int share_memory[blockSize];
@@ -152,7 +152,7 @@ int main()
 
 
     //  ==============热身===================
-    sum<<<grid, block>>>(gpu_arr, gpu_sum, N);   // 热身，为了计算更准确的时间
+    reduce_v2<<<grid, block>>>(gpu_arr, gpu_sum, N);   // 热身，为了计算更准确的时间
     cudaDeviceSynchronize();
     // =====================================
 
