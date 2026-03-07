@@ -24,35 +24,20 @@ __device__ void WarpSharedMemReduce(volatile float* shared_memory, int local_blo
     }
 
     // 这里是因为在同一个warp内，所以不必添加判断语句
-    if(local_block_threadidx < 16)
-    {
-        temp += shared_memory[local_block_threadidx + 16]; __syncwarp();
-        shared_memory[local_block_threadidx] = temp; __syncwarp();
-    }
+    temp += shared_memory[local_block_threadidx + 16]; __syncwarp();
+    shared_memory[local_block_threadidx] = temp; __syncwarp();
 
-    if(local_block_threadidx < 8)
-    {
-        temp += shared_memory[local_block_threadidx + 8]; __syncwarp();
-        shared_memory[local_block_threadidx] = temp; __syncwarp();
-    }
+    temp += shared_memory[local_block_threadidx + 8]; __syncwarp();
+    shared_memory[local_block_threadidx] = temp; __syncwarp();
 
-    if(local_block_threadidx < 4)
-    {
-        temp += shared_memory[local_block_threadidx + 4]; __syncwarp();
-        shared_memory[local_block_threadidx] = temp; __syncwarp();
-    }
+    temp += shared_memory[local_block_threadidx + 4]; __syncwarp();
+    shared_memory[local_block_threadidx] = temp; __syncwarp();
 
-    if(local_block_threadidx < 2)
-    {
-        temp += shared_memory[local_block_threadidx + 2]; __syncwarp();
-        shared_memory[local_block_threadidx] = temp; __syncwarp();
-    }
+    temp += shared_memory[local_block_threadidx + 2]; __syncwarp();
+    shared_memory[local_block_threadidx] = temp; __syncwarp();
 
-    if(local_block_threadidx < 1)
-    {
-        temp += shared_memory[local_block_threadidx + 1]; __syncwarp();
-        shared_memory[local_block_threadidx] = temp; __syncwarp();
-    }
+    temp += shared_memory[local_block_threadidx + 1]; __syncwarp();
+    shared_memory[local_block_threadidx] = temp; __syncwarp();
 
 }
 
