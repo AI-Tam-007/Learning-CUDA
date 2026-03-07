@@ -82,7 +82,8 @@ bool CheckResult(float *cpu_sum, float groudtruth, int gridSize)
     return true;
 }
 
-int main(){
+int main()
+{
     
     const int N = 25600000;
 
@@ -93,11 +94,9 @@ int main(){
     const int blockSize = 256;
     dim3 block(blockSize);
 
-
     int gridSize = std::min((N + 256 - 1) / 256, deviceProp.maxGridSize[0]);
     dim3 grid(gridSize);
 
-    
     //int GridSize = 100000;
     float *cpu_arr = (float *)malloc(N * sizeof(float));
     float *cpu_sum = (float*)malloc((gridSize) * sizeof(float));
@@ -106,8 +105,6 @@ int main(){
     float *gpu_sum;
     cudaMalloc((void **)&gpu_arr, N * sizeof(float));
     cudaMalloc((void **)&gpu_sum, (gridSize) * sizeof(float));
-
-
 
 
     for(int i = 0; i < N; i++)
@@ -122,8 +119,8 @@ int main(){
     
     
 
-
     float milliseconds = 0;
+
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
