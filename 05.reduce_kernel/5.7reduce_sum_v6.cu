@@ -1,4 +1,4 @@
-// 相较v4而言，v5的改进点主要是将for循环完全展开，以减去for循环中的加法指令，以及给编译器更多重排指令的空间
+// 相较v5而言，v6的改进点主要是启动两次核函数求得最终完整的结果，前面几个版本只启动了一次kernel，然后将算出的gridSize个block的和在host端进行加和。
 
 
 
@@ -91,25 +91,28 @@ __device__ void BlockSharedMemReduce(float* shared_memory, int local_block_threa
 
 
 template<int blockSize>
-__global__ void reduce_v5(float *gpu_arr, float *gpu_sum, int N)
+__global__ void reduce_v6(float *gpu_arr, float *gpu_sum, int N)
 {
   
-    __shared__ float shared_memory[blockSize];   // 注意：kernel内部的blockSize并非外部的blockSize值，因为外部在启动kernel时用的是blockSize/2
+    __shared__ float shared_memory[blockSize]; 
     unsigned int local_block_threadidx = threadIdx.x;
-    unsigned int global_block_threadidx = blockIdx.x * (blockDim.x * 2) + threadIdx.x;  // 此处*2指仍要处理2*blockSize的数据，即256个，只是线程数减成128而已
+    unsigned int global_block_threadidx = blockIdx.x * blockDim.x + threadIdx.x;  
 
     
-    // 每个线程加载两个元素到shared mem对应位置（边界保护）
+    
+    
     float sum = 0.0f;
-    if (global_block_threadidx < N) sum += gpu_arr[global_block_threadidx];
-    if (global_block_threadidx + blockSize < N) sum += gpu_arr[global_block_threadidx + blockSize];
 
+    // 此处的步长为全部线程总数，可能并未显现出来，但是当blockDim.x*gridDim.x远小于数据量的时候grid-stride loop就会起作用
+    for (unsigned int index = global_block_threadidx ; index < N; index += blockDim.x*gridDim.x)    // 不一定会提升性能
+    {
+        sum += gpu_arr[index];
+    }
     shared_memory[local_block_threadidx] = sum;
-  
     __syncthreads();
-    // 执行到此处后，数据量从N到了N/2
-    
-    
+
+
+
     // 相较v4，将此处for循环完整展开并且最后一个warp依然被拎出来单独作reduce
     BlockSharedMemReduce<blockSize>(shared_memory, local_block_threadidx);
 
@@ -149,7 +152,7 @@ int main()
 
     // 设定block大小，相较v2，减少一半线程
     const int blockSize = 256;   
-    dim3 block(blockSize / 2);
+    dim3 block(blockSize);
 
     // 设定grid大小
     int gridSize = min((N + blockSize - 1) / blockSize, deviceProp.maxGridSize[0]);
@@ -157,7 +160,8 @@ int main()
 
     // host端定义变量并分配内存
     float *cpu_arr = (float *)malloc(N * sizeof(float));
-    float *cpu_sum = (float*)malloc((gridSize) * sizeof(float));
+    float *cpu_sum = (float *)malloc(1 * sizeof(float));
+    
 
     // host端数据初始化
     for(int i = 0; i < N; i++)
@@ -172,7 +176,13 @@ int main()
     float *gpu_sum;
     cudaMalloc((void **)&gpu_arr, N * sizeof(float));
     cudaMalloc((void **)&gpu_sum, (gridSize) * sizeof(float));
-    
+
+
+    // 新增变量
+    float *all_result;
+    cudaMalloc((void **)&all_result, 1 * sizeof(float));
+
+
     // 用于验证device端输出结果的正确性
     float groundtruth = N * 1.0f;
 
@@ -181,7 +191,7 @@ int main()
 
 
     //  ==============热身===================
-    reduce_v5<blockSize / 2><<<grid,block>>>(gpu_arr, gpu_sum, N);  // 热身，为了计算更准确的时间
+    reduce_v6<blockSize><<<grid,block>>>(gpu_arr, gpu_sum, N);  // 热身，为了计算更准确的时间
     cudaDeviceSynchronize();
     // =====================================
 
@@ -194,21 +204,22 @@ int main()
     cudaEventCreate(&stop);
     cudaEventRecord(start);
 
-    // 启动模板kernel函数，blockSize / 2表示只用一半，原来是256，现在只用128
-    reduce_v5<blockSize / 2><<<grid,block>>>(gpu_arr, gpu_sum, N);
+    // 启动模板kernel函数
+    reduce_v6<blockSize><<<grid,block>>>(gpu_arr, gpu_sum, N);
+    reduce_v6<blockSize><<<1,block>>>(gpu_sum, all_result, gridSize);
 
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&milliseconds, start, stop);
 
     // 将device端的gpu_sum数据转到host端的cpu_sum数据中
-    cudaMemcpy(cpu_sum, gpu_sum, gridSize * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(cpu_sum, all_result, 1 * sizeof(float), cudaMemcpyDeviceToHost);
   
     // 已分配gridSize个块，总数据量为N
     cout << "allcated " << gridSize << " blocks, data counts are " << N << endl;
 
     // 撰写函数检验cpu端数据和gpu端数据是否一致
-    bool is_right = CheckResult(cpu_sum, groundtruth, gridSize);
+    bool is_right = CheckResult(cpu_sum, groundtruth, 1);
     if(is_right) 
     {
         cout << "the ans is right" << endl;
@@ -217,16 +228,17 @@ int main()
     {
         cout << "the ans is wrong" << endl;
         cout << "groundtruth is:" << groundtruth << endl;
-        for(int i = 0; i < gridSize; i++)
+        for(int i = 0; i < 1; i++)
         {
             cout << "res per block :" << cpu_sum[i] << endl;
         }
     }
-    cout << "reduce_v5 latency :" << milliseconds << endl;
+    cout << "reduce_v6 latency :" << milliseconds << endl;
 
     // 释放资源
     cudaFree(gpu_arr);
     cudaFree(gpu_sum);
+    cudaFree(all_result);
     free(cpu_arr);
     free(cpu_sum);
 }
