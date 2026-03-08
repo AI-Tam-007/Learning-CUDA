@@ -1,6 +1,13 @@
 //相较于v1-v6在block层面实现归约求和，本次是在warp层面实现
 
+/*
+总结：
+在warp层面相较于block层面的好处：1.线程之间的同步开销相较blcok的__syncthreads();小很多。2.不用考虑是否存在warp divergence。3.warp层面有更高的通信带宽。
+但是，不一定在warp层面就一定会有显著提升，要case by case，例如数据量大的情况下，warp层面的reduce可能效率不如block层面。
 
+warp层面相比block层面需要拆分成两次归约，第一次是warp内部归约，第二次是拆分的多个warp归约。
+
+*/
 
 
 #include <bits/stdc++.h>
@@ -26,45 +33,53 @@ __device__ float WarpShuffle(float sum)
 }
 
 template <int blockSize>
-__global__ void reduce_warp_level(float *gpu_arr,float *gpu_sum, unsigned int N){
-    float sum = 0;//当前线程的私有寄存器，即每个线程都会拥有一个sum寄存器
+__global__ void reduce_warp_level(float *gpu_arr,float *gpu_sum, unsigned int N)
+{
 
+    float sum = 0;//当前线程的私有寄存器，即每个线程都会拥有一个sum寄存器
     unsigned int local_block_threadidx  = threadIdx.x;
     unsigned int global_block_threadidx  = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // 基于v5的改进：不用显式指定一个线程处理2个元素，而是通过L30的for循环来自动确定每个线程处理的元素个数
-    for (int index = global_block_threadidx ; index < N; index += blockDim.x * gridDim.x)
+    // 基于v5的改进：不用显式指定一个线程处理2个元素，而是通过for循环来自动确定每个线程处理的元素个数
+    for (int index = global_block_threadidx ; index < N; index += blockDim.x * gridDim.x)  // 在启动kernel时，并未减少线程，因此，此处依然是1个线程对应1个数据
     {
-        sum += gpu_arr[index];
+        sum += gpu_arr[index];   // 每个线程只会执行1次，因此每个线程对应的sum应该都为1
     }
-    
-    // 用于存储partial sums for each warp of a block
-    __shared__ float WarpSums[blockSize / WarpSize]; 
-    // 当前线程在其所在warp内的ID
+
+
+    // 与block层面对每个线程存结果不同的是，warp层面是对1个block中的每个warp的和存为一个结果，即有多少个warp存多少个结果，blockSize=256，warp=32，即一个block存8个warp
+    __shared__ float shared_WarpSums[blockSize / WarpSize];   // 范围：WarpSums[0-8]
+
+    // 当前线程在其所在warp内的ID，例如threads=129，它在block层面就是129，但是在warp层面，它就是第129/32=4……1 = 5个warp中的第1个线程
     const int laneId = local_block_threadidx % WarpSize;
-    // 当前线程所在warp在所有warp范围内的ID
+    // 当前线程所在warp在所有warp范围内的ID，例如threads=129，它在block层面就是blockDim.x*blockIdx.x+threadIdx.x，但是在warp层面，它就是第129/32=4……1 = 5个warp中
     const int warpId = local_block_threadidx / WarpSize; 
-    // 对当前线程所在warp作warpshuffle操作，直接交换warp内线程间的寄存器数据
+
+
+    
+
+    // 第一次归约求和：对当前线程所在warp做warpshuffle操作，求得一个warp的和
     sum = WarpShuffle<blockSize>(sum);
+
     if(laneId == 0) 
     {
-        WarpSums[warpId] = sum;
+        shared_WarpSums[warpId] = sum;  // 将1个warp的和存到WarpSums中，一共8个
     }
     __syncthreads();
+
+
     //至此，得到了每个warp的reduce sum结果
-    //接下来，再使用第一个warp(laneId=0-31)对每个warp的reduce sum结果求和
-    //首先，把warpsums存入前blockDim.x / WarpSize个线程的sum寄存器中
-    //接着，继续warpshuffle
-    sum = (local_block_threadidx < blockSize / WarpSize) ? WarpSums[laneId] : 0;
-    // Final reduce using first warp
+    //接下来，再使用第一个warp(laneId=0-31)对每个warp的reduce sum结果求和，也就是将WarpSums中的8个结果再次求和
+    sum = (local_block_threadidx < blockSize / WarpSize) ? shared_WarpSums[laneId] : 0;   // 这里将前8个线程变为warp和，其余置零，否则会污染计算结果。不置零则如下：[32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
+    
     if (warpId == 0) 
     {
-        sum = WarpShuffle<blockSize/WarpSize>(sum); 
+        sum = WarpShuffle<blockSize/WarpSize>(sum);   // 第二次归约求8个warp组成的1个block结果
     }
-    // store: 哪里来回哪里去，把reduce结果写回显存
-    if (local_block_threadidx == 0) 
+    
+    if (local_block_threadidx == 0)  
     {
-        gpu_sum[blockIdx.x] = sum;
+        gpu_sum[blockIdx.x] = sum;   // 得到第二次归约后1个block的结果
     }
 }
 
