@@ -28,7 +28,7 @@ Learning-CUDA/
 
 ---
 
-# **SoftMax FP32 性能对比**
+## **SoftMax FP32 性能对比**
 
 | Shape       | DType | CPU        | Naive       | Shared      | Warp Shuffle | Register Cache | Vectorized                          | PyTorch     |
 |-------------|-------|------------|-------------|-------------|--------------|----------------|-------------------------------------|-------------|
