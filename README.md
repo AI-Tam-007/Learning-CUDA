@@ -21,7 +21,7 @@ Learning-CUDA/
 
 
 
-```markdown
+
 # **SoftMax FP32 性能对比**
 Shape	     DType	   CPU	        Naive	       Shared	       Warp Shuffle	  Register Cache	 Vectorized	                            PyTorch
 128×256	   FP32	  0.54337 ms	 0.120909  ms	  0.009728  ms   0.0192512 ms	  0.0078784 ms	  0.0072704  ms	                         0.017738 ms
