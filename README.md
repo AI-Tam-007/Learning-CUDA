@@ -26,7 +26,7 @@ Learning-CUDA/
 ├── 08.softmax/                    # Softmax 算子：全链路优化 + 性能对比
 └── README.md                      # 项目说明文档
 
-## Softmax FP32 性能对比
+Softmax FP32 性能对比：
 
 | Shape       | DType | CPU        | Naive       | Shared      | Warp Shuffle | Register Cache | Vectorized                          | PyTorch     |
 |-------------|-------|------------|-------------|-------------|--------------|----------------|-------------------------------------|-------------|
