@@ -26,6 +26,32 @@ Learning-CUDA/
 ├── 08.softmax/                    # Softmax 算子：全链路优化 + 性能对比
 └── README.md                      # 项目说明文档
 
+
+在8192x4096的阶段：
+baseline：
+1.查看Speed of Light
+Compute (SM) Throughput [%]	3.76
+Memory Throughput [%]	48.06
+结合Roofline分析推测该kernel为Memory Bound
+2.查看Memory Workload Analysis
+Memory Throughput [Gbyte/second]	60.21 --- 并未达到硬件的理论带宽
+Mem Busy [%]	48.06   Mem Pipes Busy [%]	2.99 --- 指令少，访存负担大，通常是非合并访存的问题(因为baseline的思想是一个threads处理一行，在8192x4096，1个线程处理4096列，正好对应Mem Pipes Busy发射指令少，而Mem Busy忙碌)
+Sectors/Req = 平均每个内存事务请求，下发多少个32B扇区，当Sectors/Req = 32 说明一次请求要搬运 32 * 32 = 1024 byte 数据，大量无效内存数据被强行读取，有效数据占比极低
+3.查看Warp State Statistics
+Stall Long Scoreboard占比很重，所以说明每次访问需要等很久，访存模式不理想。
+
+
+
+
+
+
+
+
+
+
+
+
+
 Softmax FP32 性能对比：
 
 | Shape       | DType | CPU        | Naive       | Shared      | Warp Shuffle | Register Cache | Vectorized                          | PyTorch     |
