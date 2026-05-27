@@ -43,15 +43,6 @@ Stall Long Scoreboard占比很重，所以说明每次访问需要等很久，�
 
 
 
-
-
-
-
-
-
-
-
-
 Softmax FP32 性能对比：
 
 | Shape       | DType | CPU        | Naive       | Shared      | Warp Shuffle | Register Cache | Vectorized                          | PyTorch     |
