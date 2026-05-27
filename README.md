@@ -39,6 +39,7 @@ Mem Busy [%]	48.06   Mem Pipes Busy [%]	2.99 --- 指令少，访存负担大，�
 Sectors/Req = 平均每个内存事务请求，下发多少个32B扇区，当Sectors/Req = 32 说明一次请求要搬运 32 * 32 = 1024 byte 数据，大量无效内存数据被强行读取，有效数据占比极低
 3.查看Warp State Statistics
 Stall Long Scoreboard占比很重，所以说明每次访问需要等很久，访存模式不理想。
+…………………………
 
 
 
