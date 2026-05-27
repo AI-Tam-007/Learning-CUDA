@@ -1,4 +1,4 @@
-# **Learning-CUDA**
+<img width="1483" height="427" alt="image" src="https://github.com/user-attachments/assets/1603481c-8027-4670-878a-42b101c9c4c1" /># **Learning-CUDA**
 
 从零开始系统学习 CUDA 编程的实战项目，从入门 HelloCUDA 到常用算子（向量加法、规约、直方图、GELU、Softmax）逐步进阶，包含基础实现、优化技巧、性能对比，适合 CUDA 初学者和 AI 推理 / 高性能计算方向开发者。
 
@@ -32,6 +32,7 @@ baseline：
 1.查看Speed of Light
 Compute (SM) Throughput [%]	3.76
 Memory Throughput [%]	48.06
+
 结合Roofline分析推测该kernel为Memory Bound
 2.查看Memory Workload Analysis
 Memory Throughput [Gbyte/second]	60.21 --- 并未达到硬件的理论带宽
