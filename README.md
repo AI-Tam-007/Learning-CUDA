@@ -27,10 +27,10 @@ Learning-CUDA/
 
 ---
 
-## **NVIDIA Nsight Compute分析**
+## **NVIDIA Nsight Compute性能分析**
 在8192x4096的阶段：
 
-**BaseLine：**
+**Baseline版本：**
 
 1. 查看Speed of Light  
    <img width="1483" height="427" alt="image" src="https://github.com/user-attachments/assets/1603481c-8027-4670-878a-42b101c9c4c1" />  
