@@ -25,7 +25,9 @@ Learning-CUDA/
 ├── 08.softmax/                    # Softmax 算子：全链路优化 + 性能对比
 └── README.md                      # 项目说明文档
 
+---
 
+## **NVIDIA Nsight Compute分析**
 在8192x4096的阶段：
 
 **BaseLine：**
@@ -66,11 +68,9 @@ Learning-CUDA/
    <img width="1486" height="631" alt="image" src="https://github.com/user-attachments/assets/328014ea-ac77-41ec-9ee8-0a5a73f7312a" />  
    Stall Long Scoreboard占比很重，所以说明每次访问需要等很久，访存模式不理想。
 
+---
 
-
-
-
-
+## **结果数据对比**
 
 Softmax FP32 性能对比：
 
