@@ -24,6 +24,7 @@ Learning-CUDA/
 ├── 07.gelu/                       # GELU 激活函数：CUDA 实现与优化
 ├── 08.softmax/                    # Softmax 算子：全链路优化 + 性能对比
 └── README.md                      # 项目说明文档
+```
 
 ---
 
